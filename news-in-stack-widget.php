@@ -267,6 +267,7 @@ class News_In_Stack_Widget extends WP_Widget
 		$thumb_w = isset($instance['thumb_w']) ? absint($instance['thumb_w']) : 50;
 		$show_type = isset($instance['show_type']) ? esc_attr($instance['show_type']) : 'post';
 		$excerpt_length = isset($instance['excerpt_length']) ? absint($instance['excerpt_length']) : 5;
+		$checkedCats = isset($instance['cats']) ? $instance['cats'] : NULL;
 
 		$template = isset($instance['template']) ? ($instance['template']) : $this->defaultTemplate;
 		$styles = isset($instance['styles']) ? ($instance['styles']) : $this->defaultStyles;
@@ -292,13 +293,13 @@ class News_In_Stack_Widget extends WP_Widget
 				          name="<?php echo $this->get_field_name("template"); ?>"
 				          rows="7"><?php echo $template; ?></textarea>
 			</label>
-			<strong>Info:</strong><br/>
-			{title} - the post title <br/>
-			{thumb} - thumpnail. Returns image code <br/>
-			{thumburl} - link to post. Returns full url to post thumbnails <br/>
-			{postlink} - link to post. Returns full url to post <br/>
-			{excerpt} - Excerpt. Return string <br/>
-			{commentnum} - Number of comments. Return int. <br/>
+			<strong>Avaliable variables:</strong><br/>
+			{title}
+			{thumb}
+			{thumburl}
+			{postlink}
+			{excerpt}
+			{commentnum}
 		</p>
 		<p>
 			<label for="<?php echo $this->get_field_id('styles'); ?>"><?php _e('Additional styles:'); ?>
@@ -405,8 +406,8 @@ class News_In_Stack_Widget extends WP_Widget
 				echo "<br/>";
 				foreach ($categories as $cat) {
 					$option = '<input type="checkbox" id="' . $this->get_field_id('cats') . '[]" name="' . $this->get_field_name('cats') . '[]"';
-					if (is_array($instance['cats'])) {
-						foreach ($instance['cats'] as $cats) {
+					if (is_array($checkedCats)) {
+						foreach ($checkedCats as $cats) {
 							if ($cats == $cat->term_id) {
 								$option = $option . ' checked="checked"';
 							}
