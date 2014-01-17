@@ -2,9 +2,9 @@
 Contributors: eugenbobrowski
 Donate link: http://bobrowski.ru/
 Tags: recent posts, category, categories, tag, tags, widget, post list, exclude, include
-Requires at least: 1.0
+Requires at least: 3.0
 Tested up to: 3.8
-Stable tag: 3.8
+Stable tag: 1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
