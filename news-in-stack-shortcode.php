@@ -19,7 +19,9 @@ class News_In_Stack_Shortcode {
             'title' => array($this, 'shortcode_title'),
             'thumb' => array($this, 'shortcode_thumb'),
             'excerpt' => array($this, 'shortcode_excerpt'),
+            'comments' => array($this, 'shortcode_commentsnum'),
             'commentnum' => array($this, 'shortcode_commentsnum'),
+            'date' => array($this, 'shortcode_date'),
         ));
         add_shortcode('stack', array($this, 'shortcode_stack'));
         add_filter('widget_text', 'do_shortcode');
@@ -163,6 +165,15 @@ class News_In_Stack_Shortcode {
     {
         return get_the_excerpt();
     }
+    public function shortcode_commentsnum($attr)
+    {
+        return get_comments_number();
+    }
+    public function shortcode_date()
+    {
+        return get_the_time("j M Y");
+    }
+
 }
 
 News_In_Stack_Shortcode::get_instance();
