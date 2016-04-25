@@ -1,5 +1,4 @@
 <?php
-
 /*
 Plugin Name: News in Stack Widget
 
@@ -9,10 +8,12 @@ Author: Eugen Bobrowski
 Author URI: http://bobrowski.ru
 */
 
+include_once 'news-in-stack-shortcode.php';
 
 class News_In_Stack_Widget extends WP_Widget
 {
     public $instance;
+    public $widget_shortcodes;
 
     /** constructor */
     function __construct()
@@ -23,15 +24,6 @@ class News_In_Stack_Widget extends WP_Widget
         );
         $control_ops = array('width' => 400, 'height' => 350);
         parent::__construct('news-in-stack-widget', __('News in Stack Widget'), $widget_ops, $control_ops);
-
-
-        $this->widget_shortcodes = apply_filters('nisw_shortcodes', array(
-            'link' => array($this, 'shortcode_link'),
-            'title' => array($this, 'shortcode_title'),
-            'thumb' => array($this, 'shortcode_thumb'),
-            'excerpt' => array($this, 'shortcode_excerpt'),
-            'commentnum' => array($this, 'shortcode_commentsnum'),
-        ));
 
     }
 
@@ -62,7 +54,7 @@ class News_In_Stack_Widget extends WP_Widget
 
         if (!$show_type = $instance["show_type"]) $show_type = 'post';
 
-        if (!($this->instance['thumb_h'] = absint($this->instance['thumb_h']))) $this->instance['thumb_h'] = 50;
+        if (!$thumb_h = absint($instance["thumb_h"])) $thumb_h = 50;
 
         if (!$thumb_w = absint($instance["thumb_w"])) $thumb_w = 50;
 
@@ -203,8 +195,8 @@ class News_In_Stack_Widget extends WP_Widget
             if (isset($tags['commentnum'])) {
                 $item = str_replace('{commentnum}', get_comments_number(), $item);
             }
-
-            echo '<li class="' . $cssclass . '">' . $this->stack_shortcodes($item) . '</li>';
+            $nis_sc = News_In_Stack_Shortcode::get_instance();
+            echo '<li class="' . $cssclass . '">' . $nis_sc->stack_shortcodes($item) . '</li>';
 
         }
 
@@ -480,93 +472,12 @@ class News_In_Stack_Widget extends WP_Widget
         <?php
     }
 
-    public function stack_shortcodes($code)
-    {
-
-        $pattern = get_shortcode_regex(array_keys($this->widget_shortcodes));
-
-        do {
-            $old_code=$code;
-            $code = preg_replace_callback("/$pattern/", array($this, 'do_shortcode_tag'), $code);
-        } while ($old_code != $code);
-
-
-
-        return $code;
-    }
-    public function do_shortcode_tag($m)
-    {
-        $shortcode_tags = $this->widget_shortcodes;
-        // allow [[foo]] syntax for escaping a tag
-        if ($m[1] == '[' && $m[6] == ']') {
-            return substr($m[0], 1, -1);
-        }
-
-        $tag = $m[2];
-        $attr = shortcode_parse_atts($m[3]);
-
-        if (!is_callable($shortcode_tags[$tag])) {
-            /* translators: %s: shortcode tag */
-            $message = sprintf(__('Attempting to parse a shortcode without a valid callback: %s'), $tag);
-            _doing_it_wrong(__FUNCTION__, $message, '4.3.0');
-            return $m[0];
-        }
-
-        if (isset($m[5])) {
-            // enclosing tag - extra parameter
-            return $m[1] . call_user_func($shortcode_tags[$tag], $attr, $m[5], $tag) . $m[6];
-        } else {
-            // self-closing tag
-            return $m[1] . call_user_func($shortcode_tags[$tag], $attr, null, $tag) . $m[6];
-        }
-
-    }
-
-    public function shortcode_link($attr, $content)
-    {
-        if (empty($content)) return get_permalink();
-        $attributes = '';
-        if (is_array($attr)) {
-            foreach ($attr as $attribute => $value) {
-                $attributes .= $attribute . '="' . $value . '" ';
-            }
-        }
-
-        return '<a href="'.get_permalink().'" ' . $attributes . ' title=' . get_the_title() . '>' . $content . '</a>';
-    }
-    public function shortcode_title($attr)
-    {
-        return get_the_title();
-    }
-    public function shortcode_thumb($attr)
-    {
-        $attr = wp_parse_args($attr, array(
-            'width' => $this->instance['thumb_w'],
-            'height' => $this->instance['thumb_h'],
-        ));
-
-        if (
-            current_theme_supports("post-thumbnails") &&
-            has_post_thumbnail()
-        ) {
-            $thumbnail = wp_get_attachment_image_src(get_post_thumbnail_id(get_the_ID()), 'full');
-            require_once('aq_resize.php');
-            $thumbUrl = aq_resize($thumbnail[0], absint($attr['width']), $attr['height'], true, true, true);
-
-            if (in_array('url', $attr)) return $thumbUrl;
-            else return '<img src="'. $thumbUrl .'" alt="' . get_the_title() . '"/>';
-
-        } else {
-            return '<img src="' . apply_filters('stack_blank_img', plugin_dir_url(__FILE__) . 'assets/blank.png') . '" alt="' . get_the_title() . '"/>';
-        }
-    }
-    public function shortcode_excerpt($attr)
-    {
-        return get_the_excerpt();
-    }
-
 }
 
 // register RecentPostsPlus widget
 add_action('widgets_init', create_function('', 'return register_widget("News_In_Stack_Widget");'));
+
+
+
+
 ?>
