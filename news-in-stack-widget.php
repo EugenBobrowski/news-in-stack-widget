@@ -135,7 +135,7 @@ class News_In_Stack_Widget extends WP_Widget
         // Post list
 
         echo '<ul>';
-
+//ToDo: replace to shortcodes and cache it
         if (strpos($template, '{title}') !== false) {
             $tags['title'] = '{title}';
         }
@@ -563,6 +563,11 @@ class News_In_Stack_Widget extends WP_Widget
     public function shortcode_excerpt($attr)
     {
         return get_the_excerpt();
+    }
+
+    public function shortcode_commentsnum($attr)
+    {
+        return get_comments_number();
     }
 
 }
