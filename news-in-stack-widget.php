@@ -1,5 +1,4 @@
 <?php
-
 /*
 Plugin Name: News in Stack Widget
 
@@ -24,15 +23,6 @@ class News_In_Stack_Widget extends WP_Widget
         $control_ops = array('width' => 400, 'height' => 350);
         parent::__construct('news-in-stack-widget', __('News in Stack Widget'), $widget_ops, $control_ops);
 
-
-        $this->widget_shortcodes = apply_filters('nisw_shortcodes', array(
-            'link' => array($this, 'shortcode_link'),
-            'title' => array($this, 'shortcode_title'),
-            'thumb' => array($this, 'shortcode_thumb'),
-            'excerpt' => array($this, 'shortcode_excerpt'),
-            'commentnum' => array($this, 'shortcode_commentsnum'),
-        ));
-
     }
 
     function widget($args, $instance)
@@ -49,7 +39,7 @@ class News_In_Stack_Widget extends WP_Widget
 
         $title = apply_filters('widget_title', empty($instance['title']) ? 'Recent Posts' : $instance['title'], $instance, $this->id_base);
 
-        $template = $instance["template"];
+        $template = $this->replace_tags_to_shortcodes($instance["template"]);
         $styles = $instance['styles'];
         $script = $instance['script'];
         $cssclass = ($instance['cssclass'] === null) ? $defaults['cssclass'] : $instance['cssclass'];
@@ -62,7 +52,7 @@ class News_In_Stack_Widget extends WP_Widget
 
         if (!$show_type = $instance["show_type"]) $show_type = 'post';
 
-        if (!($this->instance['thumb_h'] = absint($this->instance['thumb_h']))) $this->instance['thumb_h'] = 50;
+        if (!$thumb_h = absint($instance["thumb_h"])) $thumb_h = 50;
 
         if (!$thumb_w = absint($instance["thumb_w"])) $thumb_w = 50;
 
@@ -135,76 +125,14 @@ class News_In_Stack_Widget extends WP_Widget
         // Post list
 
         echo '<ul>';
-//ToDo: replace to shortcodes and cache it
-        if (strpos($template, '{title}') !== false) {
-            $tags['title'] = '{title}';
-        }
-        if (strpos($template, '{thumb}') !== false) {
-            $tags['thumb'] = '{thumb}';
-        }
-        if (strpos($template, '{thumburl}') !== false) {
-            $tags['thumburl'] = '{thumburl}';
-        }
-        if (strpos($template, '{postlink}') !== false) {
-            $tags['postlink'] = '{postlink}';
-        }
-        if (strpos($template, '{date}') !== false) {
-            $tags['date'] = '{date}';
-        }
-        if (strpos($template, '{excerpt}') !== false) {
-            $tags['excerpt'] = '{excerpt}';
-        }
-        if (strpos($template, '{commentnum}') !== false) {
-            $tags['commentnum'] = '{commentnum}';
-        }
 
+        $nis_sc = News_In_Stack_Shortcode::get_instance();
 
         while ($recent_posts->have_posts()) {
 
             $recent_posts->the_post();
 
-            $item = $template;
-
-            if (isset($tags['title'])):
-                $item = str_replace('{title}', the_title('', '', false), $item);
-            endif;
-
-            if (isset($tags['thumb']) or isset($tags['thumburl'])):
-
-                if (
-                    current_theme_supports("post-thumbnails") &&
-                    has_post_thumbnail()
-                ) {
-                    $thumbnail = wp_get_attachment_image_src(get_post_thumbnail_id($post->ID), 'full');
-                    require_once('aq_resize.php');
-                    $thumbUrl = aq_resize($thumbnail[0], $thumb_w, $thumb_h, true, true, true);
-
-                    if (isset($tags['thumburl'])) {
-                        $item = str_replace('{thumburl}', $thumbUrl, $item);
-                    }
-                    if (isset($tags['thumb'])) {
-                        $item = str_replace('{thumb}', '<img src="' . $thumbUrl . '" alt="" width="' . $thumb_w . '" height="' . $thumb_h . '"/>', $item);
-                    }
-                } else {
-                    $item = str_replace('{thumb}', '', $item);
-                }
-            endif;
-
-            if (isset($tags['postlink'])) {
-                $item = str_replace('{postlink}', get_permalink(), $item);
-            }
-            if (isset($tags['date'])) {
-                $item = str_replace('{date}', get_the_time("j M Y"), $item);
-            }
-
-            if (isset($tags['excerpt'])) {
-                $item = str_replace('{excerpt}', get_the_excerpt(), $item);
-            }
-            if (isset($tags['commentnum'])) {
-                $item = str_replace('{commentnum}', get_comments_number(), $item);
-            }
-
-            echo '<li class="' . $cssclass . '">' . $this->stack_shortcodes($item) . '</li>';
+            echo '<li class="' . $cssclass . '">' . $nis_sc->stack_shortcodes($template) . '</li>';
 
         }
 
@@ -223,6 +151,18 @@ class News_In_Stack_Widget extends WP_Widget
         remove_filter('excerpt_more', $new_excerpt_more);
 
 
+    }
+    public function replace_tags_to_shortcodes($code) {
+        $r = array(
+            '{postlink}' => '[link]',
+            '{thumb}' => '[thumb]',
+            '{thumburl}' => '[thumb url]',
+            '{title}' => '[title]',
+            '{excerpt}' => '[excerpt]',
+            '{commentnum}' => '[commentnum]',
+            '{date}' => '[date]',
+        );
+        return str_replace(array_keys($r), $r, $code);
     }
 
     function return_defaults()
@@ -328,13 +268,15 @@ class News_In_Stack_Widget extends WP_Widget
                           name="<?php echo $this->get_field_name("template"); ?>"
                           rows="7"><?php echo $instance['template']; ?></textarea>
             </label>
-            <strong>Avaliable variables:</strong><br/>
-            {title}
-            {thumb}
-            {thumburl}
-            {postlink}
-            {excerpt}
-            {commentnum}
+            <strong>Avaliable shortcodes:</strong>
+            <?php
+            $nis_sc = News_In_Stack_Shortcode::get_instance();
+            $shortcodes = array();
+            foreach ($nis_sc->stack_shortcodes as $sc => $cb) {
+                echo '<code>[' . $sc . ']</code> ';
+            }
+
+            ?>
         </p>
         <p>
             <label for="<?php echo $this->get_field_id('styles'); ?>"><?php _e('Additional styles:'); ?>
@@ -398,6 +340,7 @@ class News_In_Stack_Widget extends WP_Widget
 
         <p><label for="<?php echo $this->get_field_id('number'); ?>"><?php _e('Number of posts to show:'); ?></label>
             <input id="<?php echo $this->get_field_id('number'); ?>"
+                   style="text-align: center;"
                    name="<?php echo $this->get_field_name('number'); ?>" type="text"
                    value="<?php echo $instance['number']; ?>"
                    size="3"/></p>
@@ -413,20 +356,22 @@ class News_In_Stack_Widget extends WP_Widget
 
                 <label for="<?php echo $this->get_field_id("thumb_w"); ?>">
 
-                    W: <input class="widefat" style="width:40%;" type="text"
+                    W: <input style="text-align: center;" type="text"
                               id="<?php echo $this->get_field_id("thumb_w"); ?>"
                               name="<?php echo $this->get_field_name("thumb_w"); ?>"
-                              value="<?php echo $instance['thumb_w']; ?>"/>
+                              value="<?php echo $instance['thumb_w']; ?>"
+                              size="3"/>
 
                 </label>
 
 
                 <label for="<?php echo $this->get_field_id("thumb_h"); ?>">
 
-                    H: <input class="widefat" style="width:40%;" type="text"
+                    H: <input style="text-align: center;" type="text"
                               id="<?php echo $this->get_field_id("thumb_h"); ?>"
                               name="<?php echo $this->get_field_name("thumb_h"); ?>"
-                              value="<?php echo $instance['thumb_h']; ?>"/>
+                              value="<?php echo $instance['thumb_h']; ?>"
+                              size="3"/>
 
                 </label>
 
@@ -437,13 +382,13 @@ class News_In_Stack_Widget extends WP_Widget
     <?php endif; ?>
 
         <p>
-            <label for="<?php echo $this->get_field_id('cats'); ?>"><?php _e('Categories:'); ?>
+            <?php _e('Categories:'); ?>
 
                 <?php
                 $categories = get_categories('hide_empty=0');
                 echo "<br/>";
                 foreach ($categories as $cat) {
-                    $option = '<input type="checkbox" id="' . $this->get_field_id('cats') . '[]" name="' . $this->get_field_name('cats') . '[]"';
+                    $option = '<label><input type="checkbox" id="' . $this->get_field_id('cats') . '[]" name="' . $this->get_field_name('cats') . '[]"';
                     if (is_array($instance['cats'])) {
                         foreach ($instance['cats'] as $cats) {
                             if ($cats == $cat->term_id) {
@@ -455,12 +400,12 @@ class News_In_Stack_Widget extends WP_Widget
 
                     $option .= $cat->cat_name;
 
-                    $option .= '<br />';
+                    $option .= ' </label><br />';
                     echo $option;
                 }
 
                 ?>
-            </label>
+
         </p>
         <p>
             <label for="<?php echo $this->get_field_id('show_type'); ?>"><?php _e('Show Post Type:'); ?>
@@ -480,98 +425,12 @@ class News_In_Stack_Widget extends WP_Widget
         <?php
     }
 
-    public function stack_shortcodes($code)
-    {
-
-        $pattern = get_shortcode_regex(array_keys($this->widget_shortcodes));
-
-        do {
-            $old_code=$code;
-            $code = preg_replace_callback("/$pattern/", array($this, 'do_shortcode_tag'), $code);
-        } while ($old_code != $code);
-
-
-
-        return $code;
-    }
-    public function do_shortcode_tag($m)
-    {
-        $shortcode_tags = $this->widget_shortcodes;
-        // allow [[foo]] syntax for escaping a tag
-        if ($m[1] == '[' && $m[6] == ']') {
-            return substr($m[0], 1, -1);
-        }
-
-        $tag = $m[2];
-        $attr = shortcode_parse_atts($m[3]);
-
-        if (!is_callable($shortcode_tags[$tag])) {
-            /* translators: %s: shortcode tag */
-            $message = sprintf(__('Attempting to parse a shortcode without a valid callback: %s'), $tag);
-            _doing_it_wrong(__FUNCTION__, $message, '4.3.0');
-            return $m[0];
-        }
-
-        if (isset($m[5])) {
-            // enclosing tag - extra parameter
-            return $m[1] . call_user_func($shortcode_tags[$tag], $attr, $m[5], $tag) . $m[6];
-        } else {
-            // self-closing tag
-            return $m[1] . call_user_func($shortcode_tags[$tag], $attr, null, $tag) . $m[6];
-        }
-
-    }
-
-    public function shortcode_link($attr, $content)
-    {
-        if (empty($content)) return get_permalink();
-        $attributes = '';
-        if (is_array($attr)) {
-            foreach ($attr as $attribute => $value) {
-                $attributes .= $attribute . '="' . $value . '" ';
-            }
-        }
-
-        return '<a href="'.get_permalink().'" ' . $attributes . ' title=' . get_the_title() . '>' . $content . '</a>';
-    }
-    public function shortcode_title($attr)
-    {
-        return get_the_title();
-    }
-    public function shortcode_thumb($attr)
-    {
-        $attr = wp_parse_args($attr, array(
-            'width' => $this->instance['thumb_w'],
-            'height' => $this->instance['thumb_h'],
-        ));
-
-        if (
-            current_theme_supports("post-thumbnails") &&
-            has_post_thumbnail()
-        ) {
-            $thumbnail = wp_get_attachment_image_src(get_post_thumbnail_id(get_the_ID()), 'full');
-            require_once('aq_resize.php');
-            $thumbUrl = aq_resize($thumbnail[0], absint($attr['width']), $attr['height'], true, true, true);
-
-            if (in_array('url', $attr)) return $thumbUrl;
-            else return '<img src="'. $thumbUrl .'" alt="' . get_the_title() . '"/>';
-
-        } else {
-            return '<img src="' . apply_filters('stack_blank_img', plugin_dir_url(__FILE__) . 'assets/blank.png') . '" alt="' . get_the_title() . '"/>';
-        }
-    }
-    public function shortcode_excerpt($attr)
-    {
-        return get_the_excerpt();
-    }
-
-    public function shortcode_commentsnum($attr)
-    {
-        return get_comments_number();
-    }
-
 }
 
 // register RecentPostsPlus widget
 add_action('widgets_init', create_function('', 'return register_widget("News_In_Stack_Widget");'));
+
+
+
+
 ?>
